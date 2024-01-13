@@ -1,0 +1,207 @@
+---
+source: "Liu, X. et al. Sequence features associated with the cleavage efficiency of CRISPR/Cas9 system. Sci. Rep. 6, 19675; doi: 10.1038/srep19675 (2016)."
+title: "Article review: sg RNA sequence analysis"
+output: html_notebook
+---
+
+Reference data from Table 1. the occurrences and frequencies of nucleotides at each position in Surveyor positive and negative sequences (Liu, X. et al, 2016).
+
+```{r}
+data <- data.frame("Position" = 1:21,
+                   "pos_A" = c(35,33,33,20,28,32,26,33,33,25,33,29,28,31,16,30,38,36,38,13,44),
+                   "pos_C" = c(25,32,21,41,33,26,32,28,34,28,26,34,37,37,44,41,33,37,34,63,8),
+                   "pos_G" = c(43,33,24,45,43,29,36,33,37,41,35,40,33,39,39,30,33,29,40,26,20),
+                   "pos_T" = c(26,31,51,23,25,42,35,35,25,35,35,26,31,22,30,28,25,27,17,27,57),
+                   "neg_A" = c(26,24,22,21,24,32,20,22,19,20,12,17,15,13,15,16,16,17,22,21,31),
+                   "neg_C" = c(19,16,20,24,21,18,21,19,31,27,20,24,26,36,27,27,21,24,19,29,4),
+                   "neg_G" = c(23,21,27,23,18,24,20,32,19,21,27,24,26,25,32,24,27,27,25,20,20),
+                   "neg_T" = c(21,28,20,21,26,15,28,16,20,21,30,24,22,15,15,22,25,21,23,19,34)
+                  
+)
+data
+```
+
+Percentage calculation on the frequency of each nucleotide on position of sg RNA sequences.
+```{r}
+pos_res <- data[2:5] # positive sgRNA sequences from the experiment
+
+neg_res <- data[6:9] # negative sgRNA sequences from the experiment
+
+# Percentage calculation
+calculate_percentage <- function(data_frame) {
+  # Exclude non-numeric columns
+  numeric_data <- data_frame[sapply(data_frame, is.numeric)]
+  
+  # Calculate row-wise percentages
+  row_percentages <- prop.table(as.matrix(numeric_data), 1) 
+  
+  # Convert back to data frame
+  result <- as.data.frame(row_percentages)
+  
+  # Add non-numeric columns back
+  result <- cbind(data_frame[!sapply(data_frame, is.numeric)], result)
+  result <- round(result,3)
+  return(result)
+}
+
+# Positive percentage
+pos_freq <- calculate_percentage(pos_res)
+
+# Negative percentage
+neg_freq <- calculate_percentage(neg_res)
+
+print(pos_freq)
+print(neg_freq)
+
+```
+
+Data exploration
+```{r}
+# Boxplot
+boxplot(pos_res, main = "Surveyor Positive Sequence")
+boxplot(neg_res, main = "Surveyor Negative Sequence")
+
+position_outliers_A <- c(data[data$pos_A == min(data$pos_A), 1], data[data$pos_A == max(data$pos_A), 1])
+position_outliers_C <- c(data[data$pos_C == min(data$pos_C), 1], data[data$pos_C == max(data$pos_C), 1])
+position_outliers_T <- c(data[data$pos_T == min(data$pos_T), 1], data[data$pos_T == max(data$pos_T), 1])
+
+
+#Barplot
+# Positive
+barplot(data$pos_A, names.arg = data$Position, main = "A", col = ifelse(1:nrow(data) == 20, "yellow", "grey"))
+abline(h = mean(data$pos_A), lty = 4, col = "red", lwd = 2)
+
+barplot(data$pos_C, names.arg = data$Position, , main = "C", col = ifelse(1:nrow(data) %in% c(20, 21), c("yellow", "red"), "grey"))
+abline(h = mean(data$pos_C), lty = 4, col = "red", lwd = 2)
+
+barplot(data$pos_G, names.arg = data$Position, , main = "G")
+abline(h = mean(data$pos_G), lty = 4, col = "red", lwd = 2)
+
+barplot(data$pos_T, names.arg = data$Position, , main = "T",  col = ifelse(1:nrow(data) %in% c(3, 21), "red", "grey"))
+abline(h = mean(data$pos_T), lty = 4, col = "red", lwd = 2)
+
+# Negative
+barplot(data$neg_A, names.arg = data$Position, main = "A", col = ifelse(1:nrow(data) == 11, "yellow", "grey"))
+abline(h = mean(data$neg_A), lty = 4, col = "red", lwd = 2)
+
+barplot(data$neg_C, names.arg = data$Position, , main = "C", col = ifelse(1:nrow(data) %in% c(14, 21), c("yellow", "red"), "grey"))
+abline(h = mean(data$neg_C), lty = 4, col = "red", lwd = 2)
+
+barplot(data$neg_G, names.arg = data$Position, , main = "G")
+abline(h = mean(data$neg_G), lty = 4, col = "red", lwd = 2)
+
+barplot(data$neg_T, names.arg = data$Position, , main = "T",  col = ifelse(1:nrow(data) == 21, "red", "grey"))
+abline(h = mean(data$neg_T), lty = 4, col = "red", lwd = 2)
+```
+
+Chi-square analysis
+```{r}
+# Chi square Test
+p_value <- numeric(nrow(data))
+
+for (i in 1:nrow(data)) {
+  pos <- as.numeric(data[i, c("pos_A", "pos_C", "pos_G", "pos_T")])
+  neg <- as.numeric(data[i, c("neg_A", "neg_C", "neg_G", "neg_T")])
+  M <- rbind(pos, neg)
+  Xsq <- chisq.test(M)
+  pval <- Xsq$p.value
+  p_value[i] <- round(pval,3)
+}
+data$p_value <- p_value 
+data
+```
+
+Heat map plot
+```{r}
+library(ggplot2)
+library(hrbrthemes)
+library(viridis)
+library(pheatmap)
+
+Freq_heatmap = (pos_freq - neg_freq)
+colnames(Freq_heatmap) <- c("A", "C", "G", "T")
+flipped_df <- t(Freq_heatmap)
+pheatmap(flipped_df, cluster_rows = FALSE, cluster_cols  = FALSE, fontsize = 10)
+```
+
+Permutation test 
+```{r}
+p_value <- rep(0,21)
+
+data_sgseq <- read.delim("sgRNA_seq.txt", header = FALSE, sep = " ") # Read in seq data
+sgseq <- data_sgseq$V3
+sgseq[14] <- "ACGCATACCCCTAGGTGGTGAGG" #correct the data
+
+# Create permutation distribution
+m <- 129 # number of positive seq
+n <- 89 # number of negative seq  
+
+# Seq count function
+seq_count <- function(perm , count_matrix) {
+  for (seq in perm) {
+  # Split the sequence into individual characters
+  nucleotides <- strsplit(seq, "")[[1]]
+  
+  # Update count_matrix based on  counts at each position
+  for (i in 1:length(nucleotides)) {
+    count_matrix[i, nucleotides[i]] <- count_matrix[i, nucleotides[i]] + 1
+    }
+  }
+  return(count_matrix)  
+}
+
+# Chisq test function
+chisq_test <- function(pos_df, neg_df, n) {
+  for (i in 1:n) {
+  pos <- pos_df[i, ]
+  neg <- neg_df[i, ]
+  M <- rbind(pos, neg)
+  Xsq <- chisq.test(M)
+  pval <- Xsq$p.value
+  p_value[i] <- round(pval,3)
+  }
+  p_value
+}
+
+# Permutation test
+N = 10**4 #number of repeats
+result <- numeric(N)
+set.seed(45)
+
+for(i in 1:N){
+  #reassigned the pos and neg groups
+  perm_pos <- sample(sgseq, m, replace = FALSE)
+  perm_neg <- setdiff(sgseq, perm_pos)
+  #df for insert count values
+  pos_df <- matrix(0, nrow = 23, ncol = 4, dimnames = list(NULL, c("A", "C", "G", "T")))
+  neg_df <- matrix(0, nrow = 23, ncol = 4, dimnames = list(NULL, c("A", "C", "G", "T")))
+  #count nucleotides in each position
+  pos_res <- seq_count(perm_pos, pos_df)
+  neg_res <- seq_count(perm_neg, neg_df)
+  #cal empirical p values
+  emp_pval <- chisq_test(pos_res, neg_res, 21)
+  #find smallest p-value
+  min_emp_pval <- min(emp_pval)
+  result[i] <- min_emp_pval
+}
+
+# plot empirical distribution
+par(mfrow = c (1,1))
+hist(result, freq = FALSE, main = "Empirical P value distribution", xlab = expression(Chi^2))
+# compare original p-value position 3
+abline(v = 0.031, col = "blue", lty = 5, lwd = 2)
+
+# compare original p-value position 20
+abline(v = 0.022, col = "red", lty = 5, lwd = 2)
+
+#permuted_pval calculation
+permuted_pval <- numeric(nrow(data))
+for(i in 1:nrow(data)){
+  permeuted_pval[i] = round(1 - (sum(result >= data$p_value[i]) + 1)/(N + 1), 3)
+}
+data$perm_pvalue = permeuted_pval
+```
+
+```{r}
+data
+```
