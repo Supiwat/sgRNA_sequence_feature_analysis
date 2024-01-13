@@ -11,3 +11,4 @@ Navigate to the Corresponding Folder: Inside the repository, you'll find folders
 Follow the Instructions: Each article folder contains detailed instructions, scripts, and data necessary for reproducing the analysis. Follow the step-by-step guide provided to recreate the results.
 
 # Articles Included
+Liu, X., Homma, A., Sayadi, J. et al. Sequence features associated with the cleavage efficiency of CRISPR/Cas9 system. Sci Rep 6, 19675 (2016). https://doi.org/10.1038/srep19675
